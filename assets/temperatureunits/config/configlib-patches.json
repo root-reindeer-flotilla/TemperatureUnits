@@ -1,17 +1,16 @@
 {
   "version": 1,
   "settings": {
-    "boolean": {
-      "USE_FAHRENHEIT": {
-        "name": "use-fahrenheit",
-        "ingui": "temperatureunits:setting-use-fahrenheit",
-        "weight": 1.0,
-        "comment": "When enabled, all in-game temperatures will be displayed in Fahrenheit instead of Celsius. Uses the NIST-standard conversion formula.",
-        "default": true,
-        "clientSide": true
-      }
-    },
     "string": {
+      "TEMPERATURE_UNIT": {
+        "name": "temperature-unit",
+        "ingui": "temperatureunits:setting-temperature-unit",
+        "weight": 1.0,
+        "comment": "Select the temperature unit to display. Celsius is the game default, Fahrenheit and Kelvin are converted from Celsius.",
+        "default": "fahrenheit",
+        "values": ["celsius", "fahrenheit", "kelvin"],
+        "clientSide": true
+      },
       "DECIMAL_PLACES": {
         "name": "decimal-places",
         "ingui": "temperatureunits:setting-decimal-places",

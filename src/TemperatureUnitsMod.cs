@@ -16,18 +16,18 @@ namespace TemperatureUnits
     {
         public const string HarmonyId = "reindeerflotilla.temperatureunits";
         public const string ConfigLibDomain = "temperatureunits";
-        public const string SettingUseFahrenheit = "USE_FAHRENHEIT";
+        public const string SettingTemperatureUnit = "TEMPERATURE_UNIT";
         public const string SettingDecimalPlaces = "DECIMAL_PLACES";
 
         public static TemperatureUnitsMod? Instance { get; private set; }
         public static ICoreClientAPI? ClientApi { get; private set; }
 
         // Settings read dynamically from ConfigLib
-        public bool UseFahrenheit => GetBoolSetting(SettingUseFahrenheit, true);
+        public string TemperatureUnit => GetStringSetting(SettingTemperatureUnit, "fahrenheit").ToLowerInvariant();
         public int DecimalPlaces => int.TryParse(GetStringSetting(SettingDecimalPlaces, "1"), out int dp) ? Math.Clamp(dp, 0, 2) : 1;
 
-        // Regex to match temperature patterns: "25°C", "-10.5°C", "37.8°F", etc.
-        private static readonly Regex TemperatureRegex = new(@"(-?\d+(?:[.,]\d+)?)\s*°(C|F)", RegexOptions.Compiled);
+        // Regex to match temperature patterns: "25°C", "-10.5°C", "37.8°F", "300K", etc.
+        private static readonly Regex TemperatureRegex = new(@"(-?\d+(?:[.,]\d+)?)\s*°?(C|F|K)", RegexOptions.Compiled);
         private CultureInfo cultureInfo = CultureInfo.InvariantCulture;
 
         private object? _configLibApi;
@@ -74,7 +74,7 @@ namespace TemperatureUnits
             TryInitializeConfigLib(api);
             
 #if DEBUG
-            Mod.Logger.Notification($"[TemperatureUnits] DEBUG: Settings finalized. Initial values - UseFahrenheit: {UseFahrenheit}, DecimalPlaces: {DecimalPlaces}");
+            Mod.Logger.Notification($"[TemperatureUnits] DEBUG: Settings finalized. Initial values - TemperatureUnit: {TemperatureUnit}, DecimalPlaces: {DecimalPlaces}");
 #endif
         }
 
@@ -183,28 +183,60 @@ namespace TemperatureUnits
         }
 
         /// <summary>
-        /// Replaces Celsius temperatures in text with Fahrenheit equivalents.
-        /// Uses NIST formula: F = C × 9/5 + 32
+        /// Replaces temperatures in text with the configured unit.
+        /// Conversion formulas:
+        /// - C to F: F = C × 9/5 + 32
+        /// - C to K: K = C + 273.15
         /// </summary>
         public static string ReplaceTemperatures(string? text)
         {
-            if (Instance == null || !Instance.UseFahrenheit || string.IsNullOrEmpty(text))
+            if (Instance == null || string.IsNullOrEmpty(text))
                 return text ?? "";
+
+            string targetUnit = Instance.TemperatureUnit;
+            
+            // If set to Celsius (game default), no conversion needed
+            if (targetUnit == "celsius")
+                return text;
 
             return TemperatureRegex.Replace(text, match =>
             {
-                string unit = match.Groups[2].Value;
+                string sourceUnit = match.Groups[2].Value.ToUpperInvariant();
                 
-                if (unit == "F")
+                // Skip if already in target unit
+                if ((targetUnit == "fahrenheit" && sourceUnit == "F") ||
+                    (targetUnit == "kelvin" && sourceUnit == "K"))
                     return match.Value;
 
                 string numberStr = match.Groups[1].Value.Replace(',', '.');
-                if (!float.TryParse(numberStr, NumberStyles.Float, CultureInfo.InvariantCulture, out float celsius))
+                if (!float.TryParse(numberStr, NumberStyles.Float, CultureInfo.InvariantCulture, out float sourceTemp))
                 {
                     return match.Value;
                 }
 
-                float fahrenheit = celsius * 1.8f + 32f;
+                // First convert source to Celsius if needed
+                float celsius = sourceUnit switch
+                {
+                    "C" => sourceTemp,
+                    "F" => (sourceTemp - 32f) * 5f / 9f,
+                    "K" => sourceTemp - 273.15f,
+                    _ => sourceTemp
+                };
+
+                // Then convert Celsius to target unit
+                float targetTemp = targetUnit switch
+                {
+                    "fahrenheit" => celsius * 1.8f + 32f,
+                    "kelvin" => celsius + 273.15f,
+                    _ => celsius
+                };
+
+                string unitSymbol = targetUnit switch
+                {
+                    "fahrenheit" => "°F",
+                    "kelvin" => "K",
+                    _ => "°C"
+                };
 
                 // Format based on configured decimal places
                 string format = Instance.DecimalPlaces switch
@@ -215,9 +247,9 @@ namespace TemperatureUnits
                     _ => "0.0"
                 };
                 
-                string formatted = fahrenheit.ToString(format, Instance.cultureInfo);
+                string formatted = targetTemp.ToString(format, Instance.cultureInfo);
 
-                return formatted + "°F";
+                return formatted + unitSymbol;
             });
         }
     }
