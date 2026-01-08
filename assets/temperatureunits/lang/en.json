@@ -1,6 +1,7 @@
 {
-  "temperatureunits:setting-use-fahrenheit": "Use Fahrenheit",
+  "temperatureunits:setting-temperature-unit": "Temperature Unit",
   "temperatureunits:setting-decimal-places": "Decimal Places",
+  "temperatureunits:celsius": "Celsius",
   "temperatureunits:fahrenheit": "Fahrenheit",
-  "temperatureunits:celsius": "Celsius"
+  "temperatureunits:kelvin": "Kelvin"
 }
