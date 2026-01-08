@@ -210,9 +210,9 @@ namespace TemperatureUnits
                 string format = Instance.DecimalPlaces switch
                 {
                     0 => "0",
-                    1 => "0.#",
-                    2 => "0.##",
-                    _ => "0.#"
+                    1 => "0.0",
+                    2 => "0.00",
+                    _ => "0.0"
                 };
                 
                 string formatted = fahrenheit.ToString(format, Instance.cultureInfo);
