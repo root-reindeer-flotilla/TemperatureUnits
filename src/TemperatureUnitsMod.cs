@@ -16,18 +16,22 @@ namespace TemperatureUnits
     {
         public const string HarmonyId = "reindeerflotilla.temperatureunits";
         public const string ConfigLibDomain = "temperatureunits";
-        public const string SettingCode = "USE_FAHRENHEIT";
+        public const string SettingUseFahrenheit = "USE_FAHRENHEIT";
+        public const string SettingDecimalPlaces = "DECIMAL_PLACES";
 
         public static TemperatureUnitsMod? Instance { get; private set; }
         public static ICoreClientAPI? ClientApi { get; private set; }
 
-        public bool UseFahrenheit { get; private set; } = true;
+        // Settings read dynamically from ConfigLib
+        public bool UseFahrenheit => GetBoolSetting(SettingUseFahrenheit, true);
+        public int DecimalPlaces => Math.Clamp(GetIntSetting(SettingDecimalPlaces, 1), 0, 2);
 
         // Regex to match temperature patterns: "25°C", "-10.5°C", "37.8°F", etc.
         private static readonly Regex TemperatureRegex = new(@"(-?\d+(?:[.,]\d+)?)\s*°(C|F)", RegexOptions.Compiled);
         private CultureInfo cultureInfo = CultureInfo.InvariantCulture;
 
         private object? _configLibApi;
+        private MethodInfo? _getSettingMethod;
 
         public override bool ShouldLoad(EnumAppSide forSide) => forSide == EnumAppSide.Client;
 
@@ -70,7 +74,7 @@ namespace TemperatureUnits
             TryInitializeConfigLib(api);
             
 #if DEBUG
-            Mod.Logger.Notification($"[TemperatureUnits] DEBUG: Settings finalized. UseFahrenheit: {UseFahrenheit}");
+            Mod.Logger.Notification($"[TemperatureUnits] DEBUG: Settings finalized. Initial values - UseFahrenheit: {UseFahrenheit}, DecimalPlaces: {DecimalPlaces}");
 #endif
         }
 
@@ -82,28 +86,10 @@ namespace TemperatureUnits
                 
                 if (_configLibApi != null)
                 {
-                    var getSettingMethod = _configLibApi.GetType().GetMethod("GetSetting");
-                    var setting = getSettingMethod?.Invoke(_configLibApi, new object[] { ConfigLibDomain, SettingCode });
-                    
-                    if (setting != null)
-                    {
-                        var valueProp = setting.GetType().GetProperty("Value");
-                        var value = valueProp?.GetValue(setting);
-                        
-                        if (value != null)
-                        {
-                            var asBoolMethod = value.GetType().GetMethod("AsBool", new Type[] { typeof(bool) });
-                            if (asBoolMethod != null)
-                            {
-                                UseFahrenheit = (bool)asBoolMethod.Invoke(value, new object[] { true })!;
-                            }
-                        }
-
+                    _getSettingMethod = _configLibApi.GetType().GetMethod("GetSetting");
 #if DEBUG
-                        api.Logger.Notification($"[TemperatureUnits] DEBUG: ConfigLib found, UseFahrenheit = {UseFahrenheit}");
+                    api.Logger.Notification($"[TemperatureUnits] DEBUG: ConfigLib found, settings will be read dynamically");
 #endif
-                        return;
-                    }
                 }
             }
             catch
@@ -115,9 +101,62 @@ namespace TemperatureUnits
                 api.Logger.Debug($"[TemperatureUnits] ConfigLib not available: {ex.Message}");
 #endif
             }
+        }
 
-            // Default to Fahrenheit if ConfigLib not available
-            UseFahrenheit = true;
+        private bool GetBoolSetting(string settingCode, bool defaultValue)
+        {
+            if (_configLibApi == null || _getSettingMethod == null)
+                return defaultValue;
+
+            try
+            {
+                var setting = _getSettingMethod.Invoke(_configLibApi, new object[] { ConfigLibDomain, settingCode });
+                if (setting != null)
+                {
+                    var valueProp = setting.GetType().GetProperty("Value");
+                    var value = valueProp?.GetValue(setting);
+                    
+                    if (value != null)
+                    {
+                        var asBoolMethod = value.GetType().GetMethod("AsBool", new Type[] { typeof(bool) });
+                        if (asBoolMethod != null)
+                        {
+                            return (bool)asBoolMethod.Invoke(value, new object[] { defaultValue })!;
+                        }
+                    }
+                }
+            }
+            catch { }
+            
+            return defaultValue;
+        }
+
+        private int GetIntSetting(string settingCode, int defaultValue)
+        {
+            if (_configLibApi == null || _getSettingMethod == null)
+                return defaultValue;
+
+            try
+            {
+                var setting = _getSettingMethod.Invoke(_configLibApi, new object[] { ConfigLibDomain, settingCode });
+                if (setting != null)
+                {
+                    var valueProp = setting.GetType().GetProperty("Value");
+                    var value = valueProp?.GetValue(setting);
+                    
+                    if (value != null)
+                    {
+                        var asIntMethod = value.GetType().GetMethod("AsInt", new Type[] { typeof(int) });
+                        if (asIntMethod != null)
+                        {
+                            return (int)asIntMethod.Invoke(value, new object[] { defaultValue })!;
+                        }
+                    }
+                }
+            }
+            catch { }
+            
+            return defaultValue;
         }
 
         public override void Dispose()
@@ -127,6 +166,7 @@ namespace TemperatureUnits
             Instance = null;
             ClientApi = null;
             _configLibApi = null;
+            _getSettingMethod = null;
             base.Dispose();
         }
 
@@ -166,9 +206,16 @@ namespace TemperatureUnits
 
                 float fahrenheit = celsius * 1.8f + 32f;
 
-                string formatted = numberStr.Contains('.') || numberStr.Contains(',')
-                    ? fahrenheit.ToString("0.#", Instance.cultureInfo)
-                    : Math.Round(fahrenheit).ToString(Instance.cultureInfo);
+                // Format based on configured decimal places
+                string format = Instance.DecimalPlaces switch
+                {
+                    0 => "0",
+                    1 => "0.#",
+                    2 => "0.##",
+                    _ => "0.#"
+                };
+                
+                string formatted = fahrenheit.ToString(format, Instance.cultureInfo);
 
                 return formatted + "°F";
             });
