@@ -10,6 +10,17 @@
         "default": true,
         "clientSide": true
       }
+    },
+    "string": {
+      "DECIMAL_PLACES": {
+        "name": "decimal-places",
+        "ingui": "temperatureunits:setting-decimal-places",
+        "weight": 2.0,
+        "comment": "Number of decimal places to display for converted temperatures.",
+        "default": "1",
+        "values": ["0", "1", "2"],
+        "clientSide": true
+      }
     }
   }
 }

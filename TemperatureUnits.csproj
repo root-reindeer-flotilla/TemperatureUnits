@@ -8,7 +8,7 @@
 		<RootNamespace>TemperatureUnits</RootNamespace>
 		<EnableDefaultCompileItems>false</EnableDefaultCompileItems>
 		<!-- Mod versioning -->
-		<ModVersion>1.5.1</ModVersion>
+		<ModVersion>1.6.0</ModVersion>
 	</PropertyGroup>
 
 	<!-- Warning settings -->
