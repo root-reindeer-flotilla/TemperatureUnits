@@ -23,8 +23,8 @@ namespace TemperatureUnits
 
         public bool UseFahrenheit { get; private set; } = true;
 
-        // Regex to match temperature patterns: "25°C", "-10.5°C", "37.8°C", etc.
-        private static readonly Regex TemperatureRegex = new(@"(-?\d+(?:[.,]\d+)?)\s*(°C|°F|deg)", RegexOptions.Compiled);
+        // Regex to match temperature patterns: "25°C", "-10.5°C", "37.8°F", etc.
+        private static readonly Regex TemperatureRegex = new(@"(-?\d+(?:[.,]\d+)?)\s*°(C|F)", RegexOptions.Compiled);
         private CultureInfo cultureInfo = CultureInfo.InvariantCulture;
 
         private object? _configLibApi;
@@ -106,9 +106,11 @@ namespace TemperatureUnits
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // ConfigLib not available or error - silently fall back to defaults
+#if DEBUG
+                api.Logger.Debug($"[TemperatureUnits] ConfigLib not available: {ex.Message}");
+#endif
             }
 
             // Default to Fahrenheit if ConfigLib not available
@@ -150,7 +152,7 @@ namespace TemperatureUnits
             {
                 string unit = match.Groups[2].Value;
                 
-                if (unit == "°F")
+                if (unit == "F")
                     return match.Value;
 
                 string numberStr = match.Groups[1].Value.Replace(',', '.');

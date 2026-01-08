@@ -2,7 +2,7 @@
 	"type": "Code",
 	"name": "Temperature Units",
 	"modid": "temperatureunits",
-	"version": "1.5.0",
+	"version": "1.5.1",
 	"authors": ["ReindeerFlotilla"],
 	"description": "Converts all temperature displays from Celsius to Fahrenheit using the NIST-standard formula. Configure in Mod Settings (requires ConfigLib).",
 	"side": "Client",
