@@ -24,7 +24,7 @@ namespace TemperatureUnits
 
         // Settings read dynamically from ConfigLib
         public bool UseFahrenheit => GetBoolSetting(SettingUseFahrenheit, true);
-        public int DecimalPlaces => Math.Clamp(GetIntSetting(SettingDecimalPlaces, 1), 0, 2);
+        public int DecimalPlaces => int.TryParse(GetStringSetting(SettingDecimalPlaces, "1"), out int dp) ? Math.Clamp(dp, 0, 2) : 1;
 
         // Regex to match temperature patterns: "25°C", "-10.5°C", "37.8°F", etc.
         private static readonly Regex TemperatureRegex = new(@"(-?\d+(?:[.,]\d+)?)\s*°(C|F)", RegexOptions.Compiled);
@@ -131,7 +131,7 @@ namespace TemperatureUnits
             return defaultValue;
         }
 
-        private int GetIntSetting(string settingCode, int defaultValue)
+        private string GetStringSetting(string settingCode, string defaultValue)
         {
             if (_configLibApi == null || _getSettingMethod == null)
                 return defaultValue;
@@ -146,10 +146,10 @@ namespace TemperatureUnits
                     
                     if (value != null)
                     {
-                        var asIntMethod = value.GetType().GetMethod("AsInt", new Type[] { typeof(int) });
-                        if (asIntMethod != null)
+                        var asStringMethod = value.GetType().GetMethod("AsString", new Type[] { typeof(string) });
+                        if (asStringMethod != null)
                         {
-                            return (int)asIntMethod.Invoke(value, new object[] { defaultValue })!;
+                            return (string)asStringMethod.Invoke(value, new object[] { defaultValue })!;
                         }
                     }
                 }

@@ -11,15 +11,14 @@
         "clientSide": true
       }
     },
-    "integer": {
+    "string": {
       "DECIMAL_PLACES": {
         "name": "decimal-places",
         "ingui": "temperatureunits:setting-decimal-places",
         "weight": 2.0,
-        "comment": "Number of decimal places to display for converted temperatures. Set to 0 for whole numbers, 1 or 2 for more precision.",
-        "default": 1,
-        "min": 0,
-        "max": 2,
+        "comment": "Number of decimal places to display for converted temperatures.",
+        "default": "1",
+        "values": ["0", "1", "2"],
         "clientSide": true
       }
     }
