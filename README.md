@@ -1,12 +1,12 @@
 # Temperature Units
 
-A client-side mod for Vintage Story that converts all in-game temperature displays from Celsius to Fahrenheit.
+A client-side mod for Vintage Story that converts all in-game temperature displays to Fahrenheit or Kelvin.
 
 ## Features
 
-- Converts all temperature displays (weather, body temp, furnaces, etc.) to Fahrenheit
+- Converts all temperature displays (weather, body temp, furnaces, etc.) to your preferred unit
+- Choose between Celsius, Fahrenheit, or Kelvin
 - Configurable decimal places (0, 1, or 2) — default is 1
-- Toggle between Celsius and Fahrenheit via ConfigLib settings
 - Client-side only — no server installation required
 
 ## Requirements
@@ -22,9 +22,9 @@ A client-side mod for Vintage Story that converts all in-game temperature displa
 
 ## Configuration
 
-If ConfigLib is installed, you can toggle Fahrenheit on/off in **Mod Settings**.
+If ConfigLib is installed, you can select your temperature unit and decimal places in **Mod Settings**.
 
-Without ConfigLib, Fahrenheit is enabled by default.
+Without ConfigLib, Fahrenheit with 1 decimal place is used by default.
 
 ## Building from Source
 
