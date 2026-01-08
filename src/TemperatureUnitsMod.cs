@@ -106,7 +106,10 @@ namespace TemperatureUnits
                     }
                 }
             }
-            catch (Exception ex)
+            catch
+#if DEBUG
+                (Exception ex)
+#endif
             {
 #if DEBUG
                 api.Logger.Debug($"[TemperatureUnits] ConfigLib not available: {ex.Message}");
