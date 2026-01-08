@@ -5,6 +5,7 @@ A client-side mod for Vintage Story that converts all in-game temperature displa
 ## Features
 
 - Converts all temperature displays (weather, body temp, furnaces, etc.) to Fahrenheit
+- Configurable decimal places (0, 1, or 2) — default is 1
 - Toggle between Celsius and Fahrenheit via ConfigLib settings
 - Client-side only — no server installation required
 
@@ -44,6 +45,3 @@ Output zips are created in `bin/Debug/` or `bin/Release/`.
 ## Author
 
 ReindeerFlotilla
-
-
-
