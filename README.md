@@ -15,7 +15,7 @@ A client-side mod for Vintage Story that converts all in-game temperature displa
 
 ## Installation
 
-1. Download the latest release from [Mod DB](https://mods.vintagestory.at/show/mod/38965) or [GitHub Releases](https://github.com/ReindeerFlotilla/TemperatureUnits/releases)
+1. Download the latest release from [Mod DB](https://mods.vintagestory.at/show/mod/38965) or [GitHub Releases](https://github.com/root-reindeer-flotilla/TemperatureUnits/releases)
 2. Place the `.zip` file in your `VintagestoryData/Mods` folder
 3. Launch the game
 
@@ -44,5 +44,6 @@ Output zips are created in `bin/Debug/` or `bin/Release/`.
 ## Author
 
 ReindeerFlotilla
+
 
 
