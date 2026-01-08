@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<LangVersion>latest</LangVersion>
+		<Nullable>enable</Nullable>
+		<EnableNETAnalyzers>true</EnableNETAnalyzers>
+		<AssemblyName>TemperatureUnits</AssemblyName>
+		<RootNamespace>TemperatureUnits</RootNamespace>
+		<EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+		<!-- Mod versioning -->
+		<ModVersion>1.5.0</ModVersion>
+	</PropertyGroup>
+
+	<!-- Warning settings -->
+	<PropertyGroup>
+		<WarningLevel>4</WarningLevel>
+		<!-- Disable Missing XML comment for publicly visible type or member -->
+		<NoWarn>CS1591</NoWarn>
+	</PropertyGroup>
+
+	<!-- Source files - explicitly include only src folder -->
+	<ItemGroup>
+		<Compile Include="src\**\*.cs" />
+	</ItemGroup>
+
+	<!-- Vintage Story References -->
+	<ItemGroup>
+		<Reference Include="VintagestoryAPI">
+			<HintPath>Y:\Games\Vintagestory\VintagestoryAPI.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="VintagestoryLib">
+			<HintPath>Y:\Games\Vintagestory\VintagestoryLib.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="0Harmony">
+			<HintPath>Y:\Games\Vintagestory\Lib\0Harmony.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+	</ItemGroup>
+
+	<!-- Include assets in build output -->
+	<ItemGroup>
+		<None Include="modinfo.json" CopyToOutputDirectory="PreserveNewest" />
+		<None Include="assets\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="assets" />
+	</ItemGroup>
+
+	<!-- Post-build: Package mod into zip file -->
+	<!-- Debug builds get _DEBUG suffix, Release builds are clean -->
+	<PropertyGroup>
+		<ZipSuffix Condition="'$(Configuration)' == 'Debug'">_DEBUG</ZipSuffix>
+		<ZipSuffix Condition="'$(Configuration)' != 'Debug'"></ZipSuffix>
+	</PropertyGroup>
+	
+	<Target Name="PackageMod" AfterTargets="Build">
+		<Delete Files="$(OutputPath)..\$(AssemblyName)_v$(ModVersion)$(ZipSuffix).zip" />
+		<Delete Files="$(OutputPath)$(AssemblyName).pdb" Condition="'$(Configuration)' != 'Debug'" />
+		<Delete Files="$(OutputPath)$(AssemblyName).deps.json" />
+		<ZipDirectory SourceDirectory="$(OutputPath)" DestinationFile="$(OutputPath)..\$(AssemblyName)_v$(ModVersion)$(ZipSuffix).zip" Overwrite="true" />
+	</Target>
+</Project>
