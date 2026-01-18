@@ -38,6 +38,15 @@ dotnet build -c Release
 
 Output zips are created in `bin/Debug/` or `bin/Release/`.
 
+## Tests
+
+The test project references Vintage Story assemblies. Make sure `VINTAGESTORY_PATH` points to your install.
+
+```bash
+export VINTAGESTORY_PATH=/path/to/Vintagestory
+dotnet test tests/TemperatureUnits.Tests/TemperatureUnits.Tests.csproj
+```
+
 ## License
 
 [MIT License](LICENSE)

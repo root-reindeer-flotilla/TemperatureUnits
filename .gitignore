@@ -16,5 +16,5 @@ Thumbs.db
 *.log
 
 # Cursor IDE files (includes .cursor/reviews/ for code review documents)
-.cursor/
 .cursorrules
+reviews/

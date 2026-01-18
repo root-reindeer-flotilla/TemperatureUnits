@@ -35,7 +35,7 @@ namespace TemperatureUnits
         public int DecimalPlaces => int.TryParse(GetStringSetting(SettingDecimalPlaces, "1"), out int dp) ? Math.Clamp(dp, MinDecimalPlaces, MaxDecimalPlaces) : DefaultDecimalPlaces;
 
         // Regex to match temperature patterns: "25°C", "-10.5°C", "37.8°F", "300K", etc.
-        private static readonly Regex TemperatureRegex = new(@"(-?\d+(?:[.,]\d+)?)\s*°?(C|F|K)", RegexOptions.Compiled);
+        private static readonly Regex TemperatureRegex = new(@"(?<![\d.,])(-?\d+(?:[.,]\d+)?)\s*°?(C|F|K)", RegexOptions.Compiled);
         private CultureInfo cultureInfo = CultureInfo.InvariantCulture;
 
         private object? _configLibApi;
@@ -227,31 +227,32 @@ namespace TemperatureUnits
             }
         }
 
-        /// <summary>
-        /// Replaces temperatures in text with the configured unit.
-        /// Conversion formulas:
-        /// - C to F: F = C × 9/5 + 32
-        /// - C to K: K = C + 273.15
-        /// </summary>
-        public static string ReplaceTemperatures(string? text)
+        internal static string ReplaceTemperaturesInternal(string? text, string targetUnit, int decimalPlaces, CultureInfo culture)
         {
-            if (Instance == null || string.IsNullOrEmpty(text))
+            if (string.IsNullOrEmpty(text))
+            {
                 return text ?? "";
+            }
 
-            string targetUnit = Instance.TemperatureUnit;
-            
-            // If set to Celsius (game default), no conversion needed
-            if (targetUnit == "celsius")
+            string normalizedTargetUnit = string.IsNullOrWhiteSpace(targetUnit) ? "celsius" : targetUnit.ToLowerInvariant();
+            if (normalizedTargetUnit == "celsius")
+            {
                 return text;
+            }
+
+            int clampedDecimalPlaces = Math.Clamp(decimalPlaces, MinDecimalPlaces, MaxDecimalPlaces);
+            CultureInfo cultureInfoToUse = culture ?? CultureInfo.InvariantCulture;
 
             return TemperatureRegex.Replace(text, match =>
             {
                 string sourceUnit = match.Groups[2].Value.ToUpperInvariant();
-                
+
                 // Skip if already in target unit
-                if ((targetUnit == "fahrenheit" && sourceUnit == "F") ||
-                    (targetUnit == "kelvin" && sourceUnit == "K"))
+                if ((normalizedTargetUnit == "fahrenheit" && sourceUnit == "F") ||
+                    (normalizedTargetUnit == "kelvin" && sourceUnit == "K"))
+                {
                     return match.Value;
+                }
 
                 string numberStr = match.Groups[1].Value.Replace(',', '.');
                 if (!float.TryParse(numberStr, NumberStyles.Float, CultureInfo.InvariantCulture, out float sourceTemp))
@@ -269,14 +270,14 @@ namespace TemperatureUnits
                 };
 
                 // Then convert Celsius to target unit
-                float targetTemp = targetUnit switch
+                float targetTemp = normalizedTargetUnit switch
                 {
                     "fahrenheit" => celsius * CelsiusToFahrenheitMultiplier + FahrenheitOffset,
                     "kelvin" => celsius + AbsoluteZeroCelsius,
                     _ => celsius
                 };
 
-                string unitSymbol = targetUnit switch
+                string unitSymbol = normalizedTargetUnit switch
                 {
                     "fahrenheit" => "°F",
                     "kelvin" => "K",
@@ -284,18 +285,34 @@ namespace TemperatureUnits
                 };
 
                 // Format based on configured decimal places
-                string format = Instance.DecimalPlaces switch
+                string format = clampedDecimalPlaces switch
                 {
                     MinDecimalPlaces => "0",
                     1 => "0.0",
                     MaxDecimalPlaces => "0.00",
                     _ => "0.0"
                 };
-                
-                string formatted = targetTemp.ToString(format, Instance.cultureInfo);
+
+                string formatted = targetTemp.ToString(format, cultureInfoToUse);
 
                 return formatted + unitSymbol;
             });
+        }
+
+        /// <summary>
+        /// Replaces temperatures in text with the configured unit.
+        /// Conversion formulas:
+        /// - C to F: F = C × 9/5 + 32
+        /// - C to K: K = C + 273.15
+        /// </summary>
+        public static string ReplaceTemperatures(string? text)
+        {
+            if (Instance == null || string.IsNullOrEmpty(text))
+            {
+                return text ?? "";
+            }
+
+            return ReplaceTemperaturesInternal(text, Instance.TemperatureUnit, Instance.DecimalPlaces, Instance.cultureInfo);
         }
     }
 
