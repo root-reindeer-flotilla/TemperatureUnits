@@ -19,12 +19,20 @@ namespace TemperatureUnits
         public const string SettingTemperatureUnit = "TEMPERATURE_UNIT";
         public const string SettingDecimalPlaces = "DECIMAL_PLACES";
 
+        // Temperature conversion constants
+        private const float CelsiusToFahrenheitMultiplier = 1.8f;
+        private const float FahrenheitOffset = 32f;
+        private const float AbsoluteZeroCelsius = 273.15f;
+        private const int MinDecimalPlaces = 0;
+        private const int MaxDecimalPlaces = 2;
+        private const int DefaultDecimalPlaces = 1;
+
         public static TemperatureUnitsMod? Instance { get; private set; }
         public static ICoreClientAPI? ClientApi { get; private set; }
 
         // Settings read dynamically from ConfigLib
         public string TemperatureUnit => GetStringSetting(SettingTemperatureUnit, "fahrenheit").ToLowerInvariant();
-        public int DecimalPlaces => int.TryParse(GetStringSetting(SettingDecimalPlaces, "1"), out int dp) ? Math.Clamp(dp, 0, 2) : 1;
+        public int DecimalPlaces => int.TryParse(GetStringSetting(SettingDecimalPlaces, "1"), out int dp) ? Math.Clamp(dp, MinDecimalPlaces, MaxDecimalPlaces) : DefaultDecimalPlaces;
 
         // Regex to match temperature patterns: "25°C", "-10.5°C", "37.8°F", "300K", etc.
         private static readonly Regex TemperatureRegex = new(@"(-?\d+(?:[.,]\d+)?)\s*°?(C|F|K)", RegexOptions.Compiled);
@@ -74,7 +82,7 @@ namespace TemperatureUnits
             TryInitializeConfigLib(api);
             
 #if DEBUG
-            Mod.Logger.Notification($"[TemperatureUnits] DEBUG: Settings finalized. Initial values - TemperatureUnit: {TemperatureUnit}, DecimalPlaces: {DecimalPlaces}");
+            api.Logger?.Notification($"[TemperatureUnits] DEBUG: Settings finalized. Initial values - TemperatureUnit: {TemperatureUnit}, DecimalPlaces: {DecimalPlaces}");
 #endif
         }
 
@@ -86,19 +94,26 @@ namespace TemperatureUnits
                 
                 if (_configLibApi != null)
                 {
-                    _getSettingMethod = _configLibApi.GetType().GetMethod("GetSetting");
+                    _getSettingMethod = _configLibApi.GetType().GetMethod("GetSetting", new Type[] { typeof(string), typeof(string) });
+                    
+                    if (_getSettingMethod == null)
+                    {
+                        api.Logger?.Debug("[TemperatureUnits] ConfigLib found but GetSetting method signature not found");
+                        _configLibApi = null;
+                    }
 #if DEBUG
-                    api.Logger.Notification($"[TemperatureUnits] DEBUG: ConfigLib found, settings will be read dynamically");
+                    else
+                    {
+                        api.Logger?.Notification("[TemperatureUnits] DEBUG: ConfigLib found, settings will be read dynamically");
+                    }
 #endif
                 }
             }
-            catch
-#if DEBUG
-                (Exception ex)
-#endif
+            catch (Exception ex)
             {
+                api.Logger?.Debug($"[TemperatureUnits] ConfigLib not available: {ex.Message}");
 #if DEBUG
-                api.Logger.Debug($"[TemperatureUnits] ConfigLib not available: {ex.Message}");
+                api.Logger?.Debug($"[TemperatureUnits] ConfigLib initialization exception: {ex}");
 #endif
             }
         }
@@ -111,22 +126,37 @@ namespace TemperatureUnits
             try
             {
                 var setting = _getSettingMethod.Invoke(_configLibApi, new object[] { ConfigLibDomain, settingCode });
-                if (setting != null)
+                if (setting == null)
+                    return defaultValue;
+
+                var valueProp = setting.GetType().GetProperty("Value");
+                if (valueProp == null)
                 {
-                    var valueProp = setting.GetType().GetProperty("Value");
-                    var value = valueProp?.GetValue(setting);
-                    
-                    if (value != null)
-                    {
-                        var asBoolMethod = value.GetType().GetMethod("AsBool", new Type[] { typeof(bool) });
-                        if (asBoolMethod != null)
-                        {
-                            return (bool)asBoolMethod.Invoke(value, new object[] { defaultValue })!;
-                        }
-                    }
+                    ClientApi?.Logger?.Debug($"[TemperatureUnits] ConfigLib setting '{settingCode}' has no Value property");
+                    return defaultValue;
                 }
+
+                var value = valueProp.GetValue(setting);
+                if (value == null)
+                    return defaultValue;
+
+                var asBoolMethod = value.GetType().GetMethod("AsBool", new Type[] { typeof(bool) });
+                if (asBoolMethod == null)
+                {
+                    ClientApi?.Logger?.Debug($"[TemperatureUnits] ConfigLib value for '{settingCode}' has no AsBool method");
+                    return defaultValue;
+                }
+
+                var result = asBoolMethod.Invoke(value, new object[] { defaultValue });
+                return result != null ? (bool)result : defaultValue;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                ClientApi?.Logger?.Debug($"[TemperatureUnits] Error reading bool setting '{settingCode}': {ex.Message}");
+#if DEBUG
+                ClientApi?.Logger?.Debug($"[TemperatureUnits] Exception details: {ex}");
+#endif
+            }
             
             return defaultValue;
         }
@@ -139,22 +169,37 @@ namespace TemperatureUnits
             try
             {
                 var setting = _getSettingMethod.Invoke(_configLibApi, new object[] { ConfigLibDomain, settingCode });
-                if (setting != null)
+                if (setting == null)
+                    return defaultValue;
+
+                var valueProp = setting.GetType().GetProperty("Value");
+                if (valueProp == null)
                 {
-                    var valueProp = setting.GetType().GetProperty("Value");
-                    var value = valueProp?.GetValue(setting);
-                    
-                    if (value != null)
-                    {
-                        var asStringMethod = value.GetType().GetMethod("AsString", new Type[] { typeof(string) });
-                        if (asStringMethod != null)
-                        {
-                            return (string)asStringMethod.Invoke(value, new object[] { defaultValue })!;
-                        }
-                    }
+                    ClientApi?.Logger?.Debug($"[TemperatureUnits] ConfigLib setting '{settingCode}' has no Value property");
+                    return defaultValue;
                 }
+
+                var value = valueProp.GetValue(setting);
+                if (value == null)
+                    return defaultValue;
+
+                var asStringMethod = value.GetType().GetMethod("AsString", new Type[] { typeof(string) });
+                if (asStringMethod == null)
+                {
+                    ClientApi?.Logger?.Debug($"[TemperatureUnits] ConfigLib value for '{settingCode}' has no AsString method");
+                    return defaultValue;
+                }
+
+                var result = asStringMethod.Invoke(value, new object[] { defaultValue });
+                return result != null ? (string)result : defaultValue;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                ClientApi?.Logger?.Debug($"[TemperatureUnits] Error reading string setting '{settingCode}': {ex.Message}");
+#if DEBUG
+                ClientApi?.Logger?.Debug($"[TemperatureUnits] Exception details: {ex}");
+#endif
+            }
             
             return defaultValue;
         }
@@ -218,16 +263,16 @@ namespace TemperatureUnits
                 float celsius = sourceUnit switch
                 {
                     "C" => sourceTemp,
-                    "F" => (sourceTemp - 32f) * 5f / 9f,
-                    "K" => sourceTemp - 273.15f,
+                    "F" => (sourceTemp - FahrenheitOffset) * 5f / 9f,
+                    "K" => sourceTemp - AbsoluteZeroCelsius,
                     _ => sourceTemp
                 };
 
                 // Then convert Celsius to target unit
                 float targetTemp = targetUnit switch
                 {
-                    "fahrenheit" => celsius * 1.8f + 32f,
-                    "kelvin" => celsius + 273.15f,
+                    "fahrenheit" => celsius * CelsiusToFahrenheitMultiplier + FahrenheitOffset,
+                    "kelvin" => celsius + AbsoluteZeroCelsius,
                     _ => celsius
                 };
 
@@ -241,9 +286,9 @@ namespace TemperatureUnits
                 // Format based on configured decimal places
                 string format = Instance.DecimalPlaces switch
                 {
-                    0 => "0",
+                    MinDecimalPlaces => "0",
                     1 => "0.0",
-                    2 => "0.00",
+                    MaxDecimalPlaces => "0.00",
                     _ => "0.0"
                 };
                 

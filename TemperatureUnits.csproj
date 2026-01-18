@@ -23,18 +23,31 @@
 		<Compile Include="src\**\*.cs" />
 	</ItemGroup>
 
+	<!-- Vintage Story Path Configuration -->
+	<!-- Set VINTAGESTORY_PATH environment variable to your Vintage Story installation directory -->
+	<!-- Windows example: set VINTAGESTORY_PATH=Y:\Games\Vintagestory -->
+	<!-- Linux/WSL example: export VINTAGESTORY_PATH=/mnt/y/Games/Vintagestory -->
+	<PropertyGroup>
+		<!-- Try environment variable first -->
+		<VintageStoryPath Condition="'$(VINTAGESTORY_PATH)' != ''">$(VINTAGESTORY_PATH)</VintageStoryPath>
+		<!-- Windows default path -->
+		<VintageStoryPath Condition="'$(VintageStoryPath)' == '' AND '$(OS)' == 'Windows_NT'">Y:\Games\Vintagestory</VintageStoryPath>
+		<!-- Linux/WSL: Try Y: drive mount first (maps to /mnt/y) -->
+		<VintageStoryPath Condition="'$(VintageStoryPath)' == '' AND '$(OS)' != 'Windows_NT'">/mnt/y/Games/Vintagestory</VintageStoryPath>
+	</PropertyGroup>
+
 	<!-- Vintage Story References -->
 	<ItemGroup>
 		<Reference Include="VintagestoryAPI">
-			<HintPath>Y:\Games\Vintagestory\VintagestoryAPI.dll</HintPath>
+			<HintPath>$(VintageStoryPath)/VintagestoryAPI.dll</HintPath>
 			<Private>false</Private>
 		</Reference>
 		<Reference Include="VintagestoryLib">
-			<HintPath>Y:\Games\Vintagestory\VintagestoryLib.dll</HintPath>
+			<HintPath>$(VintageStoryPath)/VintagestoryLib.dll</HintPath>
 			<Private>false</Private>
 		</Reference>
 		<Reference Include="0Harmony">
-			<HintPath>Y:\Games\Vintagestory\Lib\0Harmony.dll</HintPath>
+			<HintPath>$(VintageStoryPath)/Lib/0Harmony.dll</HintPath>
 			<Private>false</Private>
 		</Reference>
 	</ItemGroup>
