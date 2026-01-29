@@ -26,8 +26,6 @@ namespace TemperatureUnits
         public string TemperatureUnit => GetStringSetting(SettingTemperatureUnit, "fahrenheit").ToLowerInvariant();
         public int DecimalPlaces => int.TryParse(GetStringSetting(SettingDecimalPlaces, "1"), out int dp) ? Math.Clamp(dp, 0, 2) : 1;
 
-        // Regex to match temperature patterns: "25°C", "-10.5°C", "37.8°F", "300K", etc.
-        private static readonly Regex TemperatureRegex = new(@"(-?\d+(?:[.,]\d+)?)\s*°?(C|F|K)", RegexOptions.Compiled);
         private CultureInfo cultureInfo = CultureInfo.InvariantCulture;
 
         private object? _configLibApi;
@@ -47,7 +45,7 @@ namespace TemperatureUnits
 
             // Apply Harmony patches
             Harmony harmony = new(HarmonyId);
-            
+
             try
             {
                 harmony.PatchAll(Assembly.GetExecutingAssembly());
@@ -68,11 +66,11 @@ namespace TemperatureUnits
         public override void AssetsFinalize(ICoreAPI api)
         {
             base.AssetsFinalize(api);
-            
+
             if (api.Side != EnumAppSide.Client) return;
 
             TryInitializeConfigLib(api);
-            
+
 #if DEBUG
             Mod.Logger.Notification($"[TemperatureUnits] DEBUG: Settings finalized. Initial values - TemperatureUnit: {TemperatureUnit}, DecimalPlaces: {DecimalPlaces}");
 #endif
@@ -83,7 +81,7 @@ namespace TemperatureUnits
             try
             {
                 _configLibApi = api.ModLoader.GetModSystem("ConfigLib.ConfigLibModSystem");
-                
+
                 if (_configLibApi != null)
                 {
                     _getSettingMethod = _configLibApi.GetType().GetMethod("GetSetting");
@@ -115,7 +113,7 @@ namespace TemperatureUnits
                 {
                     var valueProp = setting.GetType().GetProperty("Value");
                     var value = valueProp?.GetValue(setting);
-                    
+
                     if (value != null)
                     {
                         var asBoolMethod = value.GetType().GetMethod("AsBool", new Type[] { typeof(bool) });
@@ -127,7 +125,7 @@ namespace TemperatureUnits
                 }
             }
             catch { }
-            
+
             return defaultValue;
         }
 
@@ -143,7 +141,7 @@ namespace TemperatureUnits
                 {
                     var valueProp = setting.GetType().GetProperty("Value");
                     var value = valueProp?.GetValue(setting);
-                    
+
                     if (value != null)
                     {
                         var asStringMethod = value.GetType().GetMethod("AsString", new Type[] { typeof(string) });
@@ -155,7 +153,7 @@ namespace TemperatureUnits
                 }
             }
             catch { }
-            
+
             return defaultValue;
         }
 
@@ -193,64 +191,7 @@ namespace TemperatureUnits
             if (Instance == null || string.IsNullOrEmpty(text))
                 return text ?? "";
 
-            string targetUnit = Instance.TemperatureUnit;
-            
-            // If set to Celsius (game default), no conversion needed
-            if (targetUnit == "celsius")
-                return text;
-
-            return TemperatureRegex.Replace(text, match =>
-            {
-                string sourceUnit = match.Groups[2].Value.ToUpperInvariant();
-                
-                // Skip if already in target unit
-                if ((targetUnit == "fahrenheit" && sourceUnit == "F") ||
-                    (targetUnit == "kelvin" && sourceUnit == "K"))
-                    return match.Value;
-
-                string numberStr = match.Groups[1].Value.Replace(',', '.');
-                if (!float.TryParse(numberStr, NumberStyles.Float, CultureInfo.InvariantCulture, out float sourceTemp))
-                {
-                    return match.Value;
-                }
-
-                // First convert source to Celsius if needed
-                float celsius = sourceUnit switch
-                {
-                    "C" => sourceTemp,
-                    "F" => (sourceTemp - 32f) * 5f / 9f,
-                    "K" => sourceTemp - 273.15f,
-                    _ => sourceTemp
-                };
-
-                // Then convert Celsius to target unit
-                float targetTemp = targetUnit switch
-                {
-                    "fahrenheit" => celsius * 1.8f + 32f,
-                    "kelvin" => celsius + 273.15f,
-                    _ => celsius
-                };
-
-                string unitSymbol = targetUnit switch
-                {
-                    "fahrenheit" => "°F",
-                    "kelvin" => "K",
-                    _ => "°C"
-                };
-
-                // Format based on configured decimal places
-                string format = Instance.DecimalPlaces switch
-                {
-                    0 => "0",
-                    1 => "0.0",
-                    2 => "0.00",
-                    _ => "0.0"
-                };
-                
-                string formatted = targetTemp.ToString(format, Instance.cultureInfo);
-
-                return formatted + unitSymbol;
-            });
+            return TemperatureConverter.ReplaceTemperatures(text, Instance.TemperatureUnit, Instance.DecimalPlaces, Instance.cultureInfo);
         }
     }
 
